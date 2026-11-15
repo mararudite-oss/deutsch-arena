@@ -76,11 +76,12 @@ h2{font-size:22px;margin:16px 0 10px}
 .hint{font-size:14px;color:var(--muted);margin-bottom:8px}
 .g{font-weight:800;border-radius:6px;padding:0 5px}
 .g-m{color:var(--der)} .g-n{color:var(--das)} .g-f{color:var(--die)} .g-pl{color:var(--pl)}
-.opts{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:14px}
-.opts.three{grid-template-columns:repeat(3,1fr)}
-.opt{background:var(--surface2);border:2px solid transparent;border-radius:16px;padding:14px 10px;font-size:20px;font-weight:800;cursor:pointer;transition:transform .08s}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:14px}
+.opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.opt{overflow-wrap:break-word;hyphens:manual;background:var(--surface2);border:2px solid transparent;border-radius:16px;padding:14px 10px;font-size:20px;font-weight:800;cursor:pointer;transition:transform .08s}
 .opt:hover{border-color:var(--accent)}
 .opt:active{transform:scale(.96)}
+.opts.long .opt{font-size:16px;padding:12px 6px}
 .opt .k{font-size:11px;color:var(--muted);display:block;font-weight:600}
 .opt.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
 .opt.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--bad);animation:shake .3s}
@@ -141,7 +142,7 @@ canvas#cf{position:fixed;inset:0;pointer-events:none;z-index:30}
 .toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 18px;border-radius:999px;font-weight:800;z-index:40;animation:pop .3s;max-width:92vw;text-align:center}
 @media (max-width:520px){
   .q{font-size:20px} .opt{font-size:18px;padding:12px 6px}
-  .opts.three{grid-template-columns:repeat(3,1fr)}
+  .opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
   .logo{font-size:19px}
 }
 </style>
@@ -214,17 +215,61 @@ const FACH=[
  {de:'Biologie',lv:'Bioloģijā',it:['Heft','Buch','Buntstifte','Bleistift']},
 ];
 
-// Vārdu krājums „Es un skola”: [de, dzimte vai '', lv]
-const SCHOOL=[
- ['Lehrer','m','skolotājs'],['Lehrerin','f','skolotāja'],['Schüler','m','skolnieks'],['Schülerin','f','skolniece'],
- ['Klasse','f','klase'],['Klassenzimmer','n','klases telpa'],['Tafel','f','tāfele'],['Pause','f','starpbrīdis'],
- ['Stundenplan','m','stundu saraksts'],['Fach','n','mācību priekšmets'],['Note','f','atzīme'],['Hausaufgaben','pl','mājasdarbi'],
- ['Schule','f','skola'],['Tisch','m','galds'],['Stuhl','m','krēsls'],['Freund','m','draugs'],['Freundin','f','draudzene'],
- ['Mathe','','matemātika'],['Deutsch','','vācu valoda'],['Englisch','','angļu valoda'],['Lettisch','','latviešu valoda'],
- ['Kunst','','vizuālā māksla'],['Musik','','mūzika'],['Sport','','sports'],['Biologie','','bioloģija'],
- ['Geschichte','','vēsture'],['Erdkunde','','ģeogrāfija'],['Informatik','','datorika'],['Physik','','fizika'],
-].map(a=>({w:a[0],g:a[1],lv:[a[2]],e:a[1]?'🏫':'📚'}));
-const VOCAB=[...ITEMS.map(i=>({w:i.w,g:i.g,lv:[i.lv[0]],e:i.e})),...SCHOOL];
+// Vārdu krājums no mācību grāmatas: [de, dzimte ('' = bez artikula), daudzskaitlis ('' = nav), lv, emoji, veids]
+// veids: n = lietvārds, v = darbības vārds, a = īpašības v./apstākļa v., p = frāze
+const L5=[
+ ['Beruf','m','Berufe','profesija','💼'],['Junge','m','Jungen','zēns','👦'],['Kontakt','m','Kontakte','kontakts','📇'],
+ ['Mann','m','Männer','vīrietis','👨'],['Name','m','Namen','vārds, nosaukums','🏷️'],['Familienname','m','Familiennamen','uzvārds','🏷️'],
+ ['Vorname','m','Vornamen','vārds (personvārds)','🏷️'],['Sänger','m','Sänger','dziedātājs','🎤'],['Schauspieler','m','Schauspieler','aktieris','🎭'],
+ ['Schüler','m','Schüler','skolnieks','🧑‍🎓'],['Tennisspieler','m','Tennisspieler','tenisists','🎾'],['Wohnort','m','Wohnorte','dzīvesvieta','🏠'],
+ ['Geburtsort','m','Geburtsorte','dzimšanas vieta','📍'],
+ ['Alter','n','','vecums','🎂'],['Interesse','n','Interessen','interese','💡'],['Jahr','n','Jahre','gads','📅'],
+ ['Mädchen','n','Mädchen','meitene','👧'],['Quiz','n','Quiz','viktorīna','❔'],['Telefon','n','Telefone','telefons','☎️'],
+ ['Antwort','f','Antworten','atbilde','💬'],['E-Mail','f','E-Mails','e-pasts','📧'],['Frau','f','Frauen','sieviete; kundze','👩'],
+ ['Geburt','f','Geburten','dzimšana','👶'],['Herkunft','f','','izcelsme','🌍'],['Mode','f','Moden','mode','👗'],
+ ['Frankreich','','','Francija','🇫🇷'],['Italien','','','Itālija','🇮🇹'],
+ ['heißen','','','saukties (mani sauc)','🗣️','v'],['kommen','','','nākt','🚶','v'],['kommen aus','','','būt no (kādas valsts)','🌍','v'],
+ ['sein','','','būt','✨','v'],['wohnen','','','dzīvot','🏠','v'],['wohnen in','','','dzīvot (kādā vietā)','📍','v'],
+ ['alt','','','vecs','👴','a'],['16 Jahre alt sein','','','būt 16 gadus vecam','🎂','p'],['willkommen','','','gaidīts','👋','a'],
+ ['herzlich willkommen','','','sirsnīgi gaidīti!','🤗','p'],['jetzt','','','tagad','⏱️','a'],['so','','','tā, tik','👉','a'],
+];
+const L6=[
+ ['Bleistift','m','Bleistifte','zīmulis','✏️'],['Herr','m','Herren','kungs','🎩'],['Kugelschreiber','m','Kugelschreiber','pildspalva','🖊️'],
+ ['Lehrer','m','Lehrer','skolotājs','👨‍🏫'],['Radiergummi','m','Radiergummis','dzēšgumija','🧽'],['Raum','m','Räume','telpa','🚪'],
+ ['Chemieraum','m','Chemieräume','ķīmijas kabinets','🧪'],['Rucksack','m','Rucksäcke','mugursoma','🎒'],['Spaß','m','','prieks, jautrība','😄'],
+ ['Taschenrechner','m','Taschenrechner','kalkulators','🧮'],
+ ['Herbst','m','','rudens','🍂'],['Winter','m','','ziema','❄️'],['Frühling','m','','pavasaris','🌷'],['Sommer','m','','vasara','☀️'],
+ ['Buch','n','Bücher','grāmata','📕'],['Experiment','n','Experimente','eksperiments','⚗️'],['Heft','n','Hefte','burtnīca','📓'],
+ ['Lineal','n','Lineale','lineāls','📏'],['Projekt','n','Projekte','projekts','📊'],['Quartett','n','Quartette','kvartets (kāršu spēle)','🃏'],
+ ['Spiel','n','Spiele','spēle','🎲'],['Zimmer','n','Zimmer','istaba','🛏️'],['Klassenzimmer','n','Klassenzimmer','klases telpa','🏫'],
+ ['Anmeldung','f','Anmeldungen','pieteikšanās','📝'],['Aufgabe','f','Aufgaben','uzdevums','✍️'],['Bibliothek','f','Bibliotheken','bibliotēka','📚'],
+ ['Halle','f','Hallen','zāle','🏟️'],['Sporthalle','f','Sporthallen','sporta zāle','🏀'],['Hausaufgabe','f','Hausaufgaben','mājasdarbs','🏠'],
+ ['Information','f','Informationen','informācija','ℹ️'],['Jahreszeit','f','Jahreszeiten','gadalaiks','🌦️'],['Klasse','f','Klassen','klase','👥'],
+ ['Klassenarbeit','f','Klassenarbeiten','kontroldarbs','📄'],['Mensa','f','Mensen','skolas ēdnīca','🍽️'],['Pause','f','Pausen','starpbrīdis','⏸️'],
+ ['Schere','f','Scheren','šķēres','✂️'],['Schule','f','Schulen','skola','🏫'],['Übung','f','Übungen','vingrinājums','🏋️'],
+ ['Spaghetti','pl','','spageti','🍝'],
+ ['Spaß machen','','','sagādāt prieku','😄','p'],['ein Experiment machen','','','veikt eksperimentu','⚗️','p'],['Aufgaben lösen','','','risināt uzdevumus','✍️','p'],
+ ['Hausaufgaben machen','','','pildīt mājasdarbus','🏠','p'],['eine Klassenarbeit schreiben','','','rakstīt kontroldarbu','📄','p'],
+ ['Pause machen','','','ieturēt pauzi','⏸️','p'],['Übungen machen','','','pildīt vingrinājumus','🏋️','p'],
+ ['brauchen','','','vajadzēt','🙏','v'],['finden','','','atrast; uzskatīt','🔍','v'],['fragen','','','jautāt','❓','v'],['haben','','','būt (man ir)','🤲','v'],
+ ['lösen','','','risināt','🧩','v'],['schreiben','','','rakstīt','✍️','v'],['suchen','','','meklēt','🔎','v'],['zeichnen','','','zīmēt','🖍️','v'],
+ ['echt','','','īsts; tiešām','💯','a'],['klasse','','','lieliski, forši','🤩','a'],['nett','','','jauks, laipns','😊','a'],['gerade','','','pašlaik','⏱️','a'],
+];
+const mk=(a,ch)=>({w:a[0],g:a[1],pl:a[2],lv:[a[3]],e:a[4],t:a[5]||'n',ch});
+const VOCAB=[...L5.map(a=>mk(a,'5')),...L6.map(a=>mk(a,'6'))];
+const _have=new Set(VOCAB.map(v=>v.w));
+// Papildu skolas vārdi (nav grāmatas 5./6. nodaļā)
+const EXTRA=[
+ ...ITEMS.filter(i=>i.g!=='pl'&&!_have.has(i.w)).map(i=>[i.w,i.g,'',i.lv[0],i.e]),
+ ['Lehrerin','f','Lehrerinnen','skolotāja','👩‍🏫'],['Schülerin','f','Schülerinnen','skolniece','🧑‍🎓'],['Tafel','f','Tafeln','tāfele','🟩'],
+ ['Stundenplan','m','Stundenpläne','stundu saraksts','🗓️'],['Fach','n','Fächer','mācību priekšmets','📚'],['Freund','m','Freunde','draugs','🤝'],['Freundin','f','Freundinnen','draudzene','🤝'],
+ ['Mathe','','','matemātika','➗'],['Deutsch','','','vācu valoda','🇩🇪'],['Englisch','','','angļu valoda','🇬🇧'],['Lettisch','','','latviešu valoda','🇱🇻'],
+ ['Kunst','','','vizuālā māksla','🎨'],['Musik','','','mūzika','🎵'],['Biologie','','','bioloģija','🌱'],['Geschichte','','','vēsture','🏛️'],
+ ['Erdkunde','','','ģeogrāfija','🗺️'],['Informatik','','','datorika','💻'],['Physik','','','fizika','🔭'],
+];
+VOCAB.push(...EXTRA.map(a=>mk(a,'S')));
+const CH={all:'Visi',6:'6. nodaļa',5:'5. nodaļa',S:'Skolas lietas +'};
+const SCHOOL=VOCAB.filter(v=>v.ch==='S'&&!ITEMS.some(i=>i.w===v.w));
 
 const QW=['Was','Wann','Warum','Wo','Wie','Wer','Woher','Wohin','Wie viel','Wie viele','Wie alt'];
 const QWLV={'Was':'ko? kas?','Wann':'kad?','Warum':'kāpēc?','Wo':'kur?','Wie':'kā?','Wer':'kas? (persona)','Woher':'no kurienes?','Wohin':'uz kurieni?','Wie viel':'cik? (nauda, daudzums)','Wie viele':'cik? (skaitāmas lietas)','Wie alt':'cik vecs?'};
@@ -257,6 +302,16 @@ const WQ=[
  ['Wer','spielt gern Volleyball?','Meine Freundin.'],
  ['Was','kauft die Mutter für Marta?','Einen Rucksack.'],
  ['Woher','kommt deine Lehrerin?','Aus Deutschland.'],
+ ['Wie','heißt du?','Ich heiße Max.'],
+ ['Wo','wohnst du?','Ich wohne in Riga.'],
+ ['Was','ist dein Vater von Beruf?','Er ist Schauspieler.'],
+ ['Wie','findest du die Mensa?','Klasse!'],
+ ['Was','suchst du?','Meinen Rucksack.'],
+ ['Wann','schreiben wir die Klassenarbeit?','Am Freitag.'],
+ ['Wo','machen wir das Experiment?','Im Chemieraum.'],
+ ['Wer','ist Herr Schneider?','Mein Lehrer.'],
+ ['Wie','alt ist das Mädchen?','Sie ist 12 Jahre alt.'],
+ ['Woher','kommt der Sänger?','Aus Italien.'],
 ];
 
 const SB=[
@@ -303,9 +358,15 @@ const V={
  fahren:['fahre','fährst','fährt','fahren','fahrt','fahren'],
  sprechen:['spreche','sprichst','spricht','sprechen','sprecht','sprechen'],
  sehen:['sehe','siehst','sieht','sehen','seht','sehen'],
+ kommen:['komme','kommst','kommt','kommen','kommt','kommen'],
+ suchen:['suche','suchst','sucht','suchen','sucht','suchen'],
+ zeichnen:['zeichne','zeichnest','zeichnet','zeichnen','zeichnet','zeichnen'],
+ fragen:['frage','fragst','fragt','fragen','fragt','fragen'],
+ lösen:['löse','löst','löst','lösen','löst','lösen'],
+ heißen:['heiße','heißt','heißt','heißen','heißt','heißen'],
 };
-const VOBJ={spielen:'gern Volleyball',machen:'die Hausaufgaben',wohnen:'in Riga',hören:'Musik',kochen:'das Essen',kaufen:'einen Rucksack',brauchen:'einen Zirkel',lernen:'Deutsch',gehen:'ins Kino',schwimmen:'in der Gauja',telefonieren:'gern',schreiben:'E-Mails',finden:'Deutsch interessant',arbeiten:'im Garten',sein:'in der Schule',haben:'Geburtstag',lesen:'ein Buch',essen:'Torte',fahren:'nach Riga',sprechen:'Deutsch',sehen:'einen Film'};
-const VIRR=['sein','haben','lesen','essen','fahren','sprechen','sehen','arbeiten','finden'];
+const VOBJ={spielen:'gern Volleyball',machen:'die Hausaufgaben',wohnen:'in Riga',hören:'Musik',kochen:'das Essen',kaufen:'einen Rucksack',brauchen:'einen Zirkel',lernen:'Deutsch',gehen:'ins Kino',schwimmen:'in der Gauja',telefonieren:'gern',schreiben:'E-Mails',finden:'Deutsch interessant',arbeiten:'im Garten',sein:'in der Schule',haben:'Geburtstag',lesen:'ein Buch',essen:'Torte',fahren:'nach Riga',sprechen:'Deutsch',sehen:'einen Film',kommen:'aus Lettland',suchen:'einen Kuli',zeichnen:'in Kunst',fragen:'den Lehrer',lösen:'die Aufgabe'};
+const VIRR=['sein','haben','lesen','essen','fahren','sprechen','sehen','arbeiten','finden','zeichnen','heißen','lösen'];
 const VNOTE={
  lesen:'Neregulārs: e → ie formās „du” un „er/sie/es” (du liest, er liest).',
  essen:'Neregulārs: e → i (du isst, er isst). Ievēro: „isst” ar diviem s.',
@@ -316,6 +377,9 @@ const VNOTE={
  finden:'Celms beidzas ar -d, tāpēc ieliek -e-: du findest, er findet, ihr findet.',
  sein:'„sein” jāiemācās no galvas: bin, bist, ist, sind, seid, sind.',
  haben:'„haben”: du hast, er hat (bez b!).',
+ zeichnen:'Celms beidzas ar -n pēc līdzskaņa, tāpēc ieliek -e-: du zeichnest, er zeichnet.',
+ heißen:'Celms beidzas ar -ß, tāpēc formā „du” tikai -t: du heißt (nevis heißst).',
+ lösen:'Celms beidzas ar -s, tāpēc formā „du” tikai -t: du löst.',
 };
 const PRON=['ich','du','er/sie/es','wir','ihr','sie/Sie'];
 const SUBJ=[['Ich',0],['Du',1],['Mein Vater',2],['Meine Mutter',2],['Jutta',2],['Peter',2],['Wir',3],['Ihr',4],['Meine Freunde',5],['Eva und Katrin',5]];
@@ -327,6 +391,11 @@ const VFIX=[
  ['Was ___ du in der Freizeit?','machen',1],['Wo ___ deine Oma und Opa?','wohnen',5],['Wie ___ du Deutsch?','finden',1],
  ['In Mathe ___ Jonas einen Bleistift.','brauchen',2],['Eva ___ im Sommer in der Gauja.','schwimmen',2],
  ['Die Mutter ___ für Marta einen Rucksack.','kaufen',2],['___ du Deutsch?','sprechen',1],['Am Wochenende ___ ihr einen Film.','sehen',4],
+ ['Wie ___ du?','heißen',1],['Ich ___ aus Lettland.','kommen',0],['Woher ___ Herr Schneider?','kommen',2],
+ ['Wir ___ heute eine Klassenarbeit.','schreiben',3],['Im Chemieraum ___ ihr ein Experiment.','machen',4],
+ ['Paul ___ die Aufgabe.','lösen',2],['Ich ___ meinen Rucksack.','suchen',0],['In Kunst ___ wir.','zeichnen',3],
+ ['Wo ___ du?','wohnen',1],['Das Mädchen ___ 12 Jahre alt.','sein',2],['Wir ___ in der Pause Spaghetti.','essen',3],
+ ['___ du die Lehrerin?','fragen',1],['Lisa ___ gern.','zeichnen',2],['Du ___ die Übung.','lösen',1],
 ];
 
 const TRFIX=[
@@ -340,6 +409,22 @@ const TRFIX=[
  {lv:'Mans tētis strādā dārzā.',a:['Mein Vater arbeitet im Garten','Im Garten arbeitet mein Vater'],x:['arbeite','Garten'],p:'.'},
  {lv:'Mana skolotāja ir laipna.',a:['Meine Lehrerin ist nett'],x:['Mein','bin'],p:'.'},
  {lv:'Starpbrīdī es ēdu sviestmaizi.',a:['In der Pause esse ich ein Brot','Ich esse in der Pause ein Brot'],x:['isst','einen'],p:'.'},
+ {lv:'Kā tevi sauc?',a:['Wie heißt du'],x:['Wo','heiße'],p:'?'},
+ {lv:'Mani sauc Makss.',a:['Ich heiße Max'],x:['heißt','bin'],p:'.'},
+ {lv:'No kurienes tu esi?',a:['Woher kommst du'],x:['Wohin','kommt'],p:'?'},
+ {lv:'Es esmu no Itālijas.',a:['Ich komme aus Italien'],x:['in','kommst'],p:'.'},
+ {lv:'Cik tev ir gadu?',a:['Wie alt bist du'],x:['Wie viel','hast'],p:'?'},
+ {lv:'Man ir 13 gadu.',a:['Ich bin 13 Jahre alt'],x:['habe','Jahr'],p:'.'},
+ {lv:'Kur tu dzīvo?',a:['Wo wohnst du'],x:['Woher','wohnt'],p:'?'},
+ {lv:'Mans tētis ir aktieris.',a:['Mein Vater ist Schauspieler'],x:['ein','Sänger'],p:'.'},
+ {lv:'Mēs rakstām kontroldarbu.',a:['Wir schreiben eine Klassenarbeit'],x:['einen','schreibt'],p:'.'},
+ {lv:'Es pildu mājasdarbus.',a:['Ich mache Hausaufgaben'],x:['macht','eine'],p:'.'},
+ {lv:'Ķīmijas kabinetā mēs veicam eksperimentu.',a:['Im Chemieraum machen wir ein Experiment','Wir machen im Chemieraum ein Experiment'],x:['einen','macht'],p:'.'},
+ {lv:'Skolotājs ir jauks.',a:['Der Lehrer ist nett'],x:['Die','echt'],p:'.'},
+ {lv:'Vācu valoda ir forša!',a:['Deutsch ist klasse'],x:['bin','nett'],p:'!'},
+ {lv:'Es meklēju bibliotēku.',a:['Ich suche eine Bibliothek','Ich suche die Bibliothek'],x:['einen','sucht'],p:'.'},
+ {lv:'Starpbrīdī mēs ejam uz ēdnīcu.',a:['In der Pause gehen wir in die Mensa','Wir gehen in der Pause in die Mensa'],x:['geht','Mensen'],p:'.'},
+ {lv:'Vasarā es spēlēju tenisu.',a:['Im Sommer spiele ich Tennis','Ich spiele im Sommer Tennis'],x:['spielt','Winter'],p:'.'},
 ];
 
 /* ============ PALĪGI ============ */
@@ -423,7 +508,7 @@ function genArt(level){
   const T=[];
   if(mode==='acc'){
     it=pick(ITEMS);
-    T.push(['Ich habe ___ X.'],['Ich brauche ___ X.'],['Hast du ___ X?'],['Die Mutter kauft für Marta ___ X.']);
+    T.push(['Ich habe ___ X.'],['Ich brauche ___ X.'],['Ich suche ___ X.'],['Hast du ___ X?'],['Die Mutter kauft für Marta ___ X.']);
     if(it.p.includes('M'))T.push(['In meinem Mäppchen habe ich ___ X.'],['Im Mäppchen hat Jonas ___ X.']);
     if(it.p.includes('R'))T.push(['Im Rucksack habe ich ___ X.'],['In der Schultasche hat Eva ___ X.']);
     const fs=FACH.filter(f=>f.it.includes(it.w));
@@ -478,7 +563,7 @@ function genV(level){
   let q,inf,p;
   if(Math.random()<.45){[q,inf,p]=pick(VFIX);}
   else{
-    const pool=Object.keys(V).filter(v=>level>=3||!VIRR.includes(v)||v==='haben'||v==='sein');
+    const pool=Object.keys(V).filter(v=>v in VOBJ).filter(v=>level>=3||!VIRR.includes(v)||v==='haben'||v==='sein');
     inf=pick(pool);const s=pick(SUBJ);p=s[1];
     q=`${s[0]} ___ ${VOBJ[inf]}.`;
     if(inf==='sein')q=`${s[0]} ___ ${pick(['in der Schule','13 Jahre alt','heute müde','in Riga'])}.`;
@@ -496,30 +581,42 @@ function genV(level){
   return {type:'type',kind:'v',title:'Darbības vārds',q,inf,ans:[ans],hint:`Ieraksti pareizo formu: <b>(${inf})</b>`,exp,say:full};
 }
 // Vārdi
-function genVoc(level){
+const showV=v=>v.g?DEF[v.g]+' '+v.w:v.w;
+const plTxt=v=>v.g&&v.g!=='pl'?(v.pl?` · daudzsk.: die ${v.pl}`:' · daudzskaitļa nav'):'';
+const chTag=v=>v.ch==='S'?'':` <span class="small muted">(${v.ch}. nod.)</span>`;
+function vocExp(v){return `${v.g?gspan(v.g,showV(v)):'<b>'+esc(v.w)+'</b>'} — ${esc(v.lv[0])}<span class="small muted">${plTxt(v)}</span>${chTag(v)}`;}
+function genVoc(level,ch){
+  ch=ch||(R&&R.ch)||'all';
+  let pool=VOCAB.filter(v=>ch==='all'||v.ch===ch);
   if(level===2){
-    const it=pick(VOCAB.filter(v=>v.g));
-    const ans=DEF[it.g];
-    return {type:'choice',kind:'voc',title:'der, das vai die?',q:`___ ${it.w}`,big:it.e,lv:it.lv[0],opts:['der','das','die'],ans,
-      exp:`${gspan(it.g,DEF[it.g]+' '+it.w)} — ${it.lv[0]} (${GLV[it.g]})${it.g==='pl'?'. Daudzskaitlī vienmēr „die”.':''}`,say:DEF[it.g]+' '+it.w,cols:3};
+    const it=pick(pool.filter(v=>v.g));
+    return {type:'choice',kind:'voc',title:'der, das vai die?',q:`___ ${it.w}`,big:it.e,lv:it.lv[0],opts:['der','das','die'],ans:DEF[it.g],
+      exp:vocExp(it)+(it.g==='pl'?'<br>Tikai daudzskaitlī — vienmēr „die”.':''),say:showV(it),cols:3};
   }
-  const it=pick(VOCAB);
-  const show=v=>v.g?DEF[v.g]+' '+v.w:v.w;
+  const it=pick(pool);
   if(level===3){
-    return {type:'type',kind:'voc',title:'Iztulko ar artikulu',q:'',big:it.e,lv:it.lv[0],ans:[show(it)],hint:it.g?'Raksti ar noteikto artikulu, piem. „der Bleistift”.':'Mācību priekšmets — bez artikula.',exp:`${it.g?gspan(it.g,show(it)):'<b>'+it.w+'</b>'} — ${it.lv[0]}`,say:show(it)};
+    const hint=it.g?'Raksti ar artikulu, piem. „der Bleistift”.':it.t==='v'?'Darbības vārds — nenoteiksmē (piem. „wohnen”).':it.t==='p'?'Frāze — vairāki vārdi.':'Bez artikula.';
+    return {type:'type',kind:'voc',title:'Iztulko vāciski',q:'',big:it.e,lv:it.lv[0],ans:[showV(it)],hint,exp:vocExp(it),say:showV(it)};
   }
-  const same=VOCAB.filter(v=>!!v.g===!!it.g&&v.w!==it.w);
-  let opts=[show(it)];
+  const kindOf=v=>v.g?'n':v.t;
+  const same=shuffle(VOCAB.filter(v=>kindOf(v)===kindOf(it)&&v.w!==it.w&&v.lv[0]!==it.lv[0]));
+  if(Math.random()<.5){
+    // vāciski → latviski
+    let opts=[it.lv[0]];
+    same.forEach(v=>{if(opts.length<4&&!opts.includes(v.lv[0]))opts.push(v.lv[0]);});
+    return {type:'choice',kind:'voc',title:'Ko tas nozīmē?',q:'',big:it.e,lv:showV(it),opts:shuffle(opts),ans:it.lv[0],exp:vocExp(it),say:showV(it),cols:4,sayFirst:true};
+  }
+  let opts=[showV(it)];
   if(it.g&&it.g!=='pl'){const wrongG=pick(['m','n','f'].filter(g=>g!==it.g));opts.push(DEF[wrongG]+' '+it.w);}
-  shuffle(same).forEach(v=>{if(opts.length<4&&!opts.includes(show(v)))opts.push(show(v));});
-  return {type:'choice',kind:'voc',title:'Kas tas ir vāciski?',q:'',big:it.e,lv:it.lv[0],opts:shuffle(opts),ans:show(it),exp:`${it.g?gspan(it.g,show(it)):'<b>'+it.w+'</b>'} — ${it.lv[0]}`,say:show(it),cols:4,small:true};
+  same.forEach(v=>{if(opts.length<4&&!opts.includes(showV(v)))opts.push(showV(v));});
+  return {type:'choice',kind:'voc',title:'Kā to saka vāciski?',q:'',big:it.e,lv:it.lv[0],opts:shuffle(opts),ans:showV(it),exp:vocExp(it),say:showV(it),cols:4};
 }
 // Tulkošana
 function genTr(){
   if(Math.random()<.35){
     const t=pick(TRFIX);
     const toks=t.a[0].split(' ');
-    const tiles=shuffle([...toks.map((w,i)=>i===0&&!/^(Mein|Meine)$/.test(w)?w.toLowerCase():w),...t.x]);
+    const tiles=shuffle([...toks.map((w,i)=>i===0&&!/^(Mein|Meine|Deutsch)$/.test(w)?w.toLowerCase():w),...t.x]);
     return {type:'tiles',kind:'tr',title:'Iztulko',lv:t.lv,tiles,acc:t.a,p:t.p,exp:'Pareizi: <b>'+t.a[0]+t.p+'</b>',say:t.a[0]+t.p};
   }
   const it=pick(ITEMS);
@@ -549,7 +646,7 @@ const MODES={
   w:{ico:'❓',t:'Jautājamie vārdi',s:'Was? Wann? Warum? Wo?',gen:genW,lv:['4 varianti','6 varianti','Raksti pats']},
   sb:{ico:'🧱',t:'Teikuma kārtība',s:'Darbības vārds 2. vietā',gen:genSB},
   v:{ico:'🔤',t:'Darbības vārdi',s:'spiele, spielst, spielt…',gen:genV,lv:['Izvēlies','Raksti','+ neregulārie']},
-  voc:{ico:'🃏',t:'Vārdiņi',s:'Skolas lietas, „Es un skola”',gen:genVoc,lv:['Atpazīsti','der/das/die','Raksti pats']},
+  voc:{ico:'🃏',t:'Vārdiņi',s:'5. un 6. nodaļa + skolas lietas',gen:genVoc,lv:['Atpazīsti','der/das/die','Raksti pats']},
   tr:{ico:'🌍',t:'Tulkošana',s:'No latviešu uz vācu',gen:genTr},
 };
 
@@ -583,7 +680,7 @@ function home(){
     </div>
   </div>
   <div class="tiles">
-    <button class="tile hot wide" onclick="startTest()"><span class="cnt">Rekords ${S.bestTest||0} %</span><div class="ico">🏆</div><div class="t">Formatīvā darba treniņš</div><div class="s">25 uzdevumi kā skolā: jautājumi, teikumi, artikuls, darbības vārdi, vārdiņi, tulkošana</div></button>
+    <button class="tile hot wide" onclick="startTest()"><span class="cnt">Rekords ${S.bestTest||0} %</span><div class="ico">🏆</div><div class="t">Formatīvā darba treniņš</div><div class="s">27 uzdevumi kā skolā: jautājumi, teikumi, artikuls, darbības vārdi, vārdiņi, tulkošana</div></button>
     ${['art','w','sb','v','voc','tr'].map(tile).join('')}
     <button class="tile" onclick="startBlitz()"><span class="cnt">Rekords ${S.bestBlitz||0}</span><div class="ico">⚡</div><div class="t">Blitz 60 sek.</div><div class="s">Cik artikulus paspēsi?</div></button>
     <button class="tile" onclick="startMist()"><span class="cnt">${S.mist.length}</span><div class="ico">🩹</div><div class="t">Labo kļūdas</div><div class="s">Uzdevumi, kuros kļūdījies</div></button>
@@ -597,7 +694,7 @@ function home(){
 
 function startMode(k){
   const m=MODES[k];
-  R={mode:k,n:10,i:0,ok:0,combo:0,maxCombo:0,xp:0,wrong:[],level:lvlSel[k]||1,task:null};
+  R={mode:k,n:10,i:0,ok:0,combo:0,maxCombo:0,xp:0,wrong:[],level:lvlSel[k]||1,task:null,ch:lvlSel.vch||'6'};
   nextTask();
 }
 function startMist(){
@@ -611,7 +708,7 @@ function startTest(){
   for(let i=0;i<3;i++)L.push(['II. Teikuma kārtība',genSB]);
   for(let i=0;i<6;i++)L.push(['III. Artikuls akuzatīvā',()=>genArt(i<4?2:3)]);
   for(let i=0;i<5;i++)L.push(['IV. Darbības vārdi',()=>genV(i<3?2:3)]);
-  for(let i=0;i<4;i++)L.push(['V. Vārdiņi',()=>genVoc(i<2?2:3)]);
+  for(let i=0;i<6;i++)L.push(['V. Vārdiņi (6. nod.)',()=>genVoc(i<2?2:i<4?1:3,'6')]);
   for(let i=0;i<3;i++)L.push(['VI. Tulkošana',genTr]);
   R={mode:'test',n:L.length,i:0,ok:0,combo:0,maxCombo:0,xp:0,wrong:[],list:L,log:[]};
   nextTask();
@@ -638,9 +735,11 @@ function nextTask(){
 function levelChips(){
   const m=MODES[R.mode];
   if(!m||!m.lv)return '';
-  return `<div class="lvls">${m.lv.map((n,i)=>`<button class="lv ${R.level===i+1?'on':''}" onclick="setLevel(${i+1})">${i+1}. ${n}</button>`).join('')}</div>`;
+  const chips=R.mode==='voc'?`<div class="lvls">${Object.entries(CH).map(([k,n])=>`<button class="lv ${R.ch===k?'on':''}" onclick="setCh('${k}')">📖 ${n}</button>`).join('')}</div>`:'';
+  return chips+`<div class="lvls">${m.lv.map((n,i)=>`<button class="lv ${R.level===i+1?'on':''}" onclick="setLevel(${i+1})">${i+1}. ${n}</button>`).join('')}</div>`;
 }
 function setLevel(l){lvlSel[R.mode]=l;store.set('lvl',lvlSel);startMode(R.mode);}
+function setCh(c){lvlSel.vch=c;store.set('lvl',lvlSel);startMode('voc');}
 
 function renderTask(){
   const t=R.task;
@@ -649,12 +748,12 @@ function renderTask(){
   const titleRow=R.mode==='test'?`<div class="kind">${t.section}</div>`:R.mode==='mist'?`<div class="kind">🩹 Kļūdu labošana · ${t.title}</div>`:`<div class="kind">${t.title}</div>`;
   let body='';
   const qhtml=t.q?`<div class="q">${esc(t.q).replace('___','<span class="blank" id="blank">?</span>')}${t.qa?` <span class="ans">– ${esc(t.qa)}</span>`:''}</div>`:'';
-  if(t.big)body+=`<div class="emo">${t.big}</div><div class="lvq">${esc(t.lv)}</div>`;
+  if(t.big)body+=`<div class="emo">${t.big}</div><div class="lvq">${esc(t.lv)} ${t.sayFirst?'<button class="say" onclick="say(R.task.say)">🔊</button>':''}</div>`;
   if(t.type==='tiles')body+=`<div class="lvq">${t.kind==='tr'?'🇱🇻 ':''}${esc(t.lv)}</div>`;
   body+=qhtml;
   if(t.hint)body+=`<div class="hint">${t.hint}</div>`;
   if(t.type==='choice'){
-    body+=`<div class="opts ${t.cols===3?'three':''}">${t.opts.map((o,i)=>`<button class="opt" data-o="${esc(o)}" onclick="choose(this)">${esc(o)}<span class="k">${i+1}</span></button>`).join('')}</div>`;
+    body+=`<div class="opts ${t.cols===3?'three':''} ${t.opts.some(o=>o.length>11)?'long':''}">${t.opts.map((o,i)=>`<button class="opt" data-o="${esc(o)}" onclick="choose(this)">${esc(o)}<span class="k">${i+1}</span></button>`).join('')}</div>`;
   }else if(t.type==='type'){
     body+=`<div class="inrow"><input class="inp" id="inp" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="raksti šeit…"><button class="btn primary" onclick="checkType()">OK</button></div>
     <div class="umls">${['ä','ö','ü','ß'].map(c=>`<button class="uml" onclick="ins('${c}')">${c}</button>`).join('')}</div>`;
@@ -843,9 +942,10 @@ function theory(){
   <div class="th"><h3>Skolas lietas</h3>
     <div class="tscroll"><table class="t">${ITEMS.map(i=>`<tr><td>${i.e}</td><td>${gspan(i.g,DEF[i.g]+' '+i.w)}</td><td class="muted">${i.lv[0]}</td><td><button class="say" onclick="say('${DEF[i.g]} ${i.w}')">🔊</button></td></tr>`).join('')}</table></div>
   </div>
-  <div class="th"><h3>Mācību priekšmeti un „Es un skola”</h3>
-    <div class="tscroll"><table class="t">${SCHOOL.map(i=>`<tr><td>${i.g?gspan(i.g,DEF[i.g]+' '+i.w):'<b>'+i.w+'</b>'}</td><td class="muted">${i.lv[0]}</td><td><button class="say" onclick="say('${i.g?DEF[i.g]+' ':''}${i.w}')">🔊</button></td></tr>`).join('')}</table></div>
-  </div>`;
+  ${['6','5','S'].map(c=>`<div class="th"><h3>${c==='S'?'Papildu skolas vārdi':c+'. nodaļa (Lektion '+c+')'}</h3>
+    <div class="tscroll"><table class="t">${VOCAB.filter(v=>v.ch===c&&(c!=='S'||!ITEMS.some(i=>i.w===v.w))).map(v=>`<tr><td>${v.e}</td><td>${v.g?gspan(v.g,showV(v)):'<b>'+esc(v.w)+'</b>'}${v.g&&v.g!=='pl'&&v.pl?`<div class="small muted">die ${v.pl}</div>`:''}</td><td class="muted">${esc(v.lv[0])}</td><td><button class="say" onclick="say('${showV(v)}')">🔊</button></td></tr>`).join('')}</table></div>
+  </div>`).join('')}
+`;
   scrollTo(0,0);
 }
 
